@@ -42,36 +42,37 @@ function MAX_checkContent_Keyword($limitation, $op, $aParams = array())
 		if (!empty($result))
 			$result = json_decode($result, true);
 		
-		$keyW = '';
+		$keys = array();
 		if (!empty($result) && !empty($result['Keywords']) && count($result['Keywords']) > 0)
 		{
-			$found = false;
-			foreach ($result['Keywords'] as $res) {
-				if (MAX_stringContains($limitation, $res['Content'])) {
-					$found = true;
-					break;
-				}
-			}
-			
-			if ($found) {
-				if ($op == '=~') {
-					return true;
-				} 
-				return false;
-			}
-			else {
-				if ($op == '=~') {
-					return false;
-				} 
-				return true;
+			foreach ($result['Keywords'] as $k){
+				array_push($keys, $k['Content']);
 			}
 		}
 	}
-
-	if ($op == '=~') {
-		return false;
-	} 
-
-	return true;
+	else if (!empty($_POST['keywords'])) {
+		$keys = explode("|", $_POST['keywords']);
+	}
+		
+	if (!empty($keys) && count($keys) > 0)
+	{
+		if ($op == '=~') {
+			foreach ($keys as $ke) {
+				if (MAX_limitationsMatchStringValue($limitation, $ke, $op)) {
+					return true;
+				}
+			}
+			return false;
+		}
+		else if ($op == '!~') {
+			foreach ($keys as $ke) {
+				if (MAX_limitationsMatchStringValue($limitation, $ke, '=~')) {
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+	return false;
 }
 ?>

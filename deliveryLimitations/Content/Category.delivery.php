@@ -32,9 +32,9 @@ function MAX_checkContent_Category($limitation, $op, $aParams = array())
 		$qContent = trim($_POST['q']);
 		if (empty($qContent))
 		{
-			if ($op == '==' || $op == '=~') {
+			if ($op == '=~') {
 				return false;
-			} 
+			}
 			return true;
 		}
 		
@@ -42,71 +42,48 @@ function MAX_checkContent_Category($limitation, $op, $aParams = array())
 		if (!empty($result))
 			$result = json_decode($result, true);
 		
-		$keys = '';
-		$key1 = '';
-		$key2 = '';
-		$key3 = '';
+		$cats = array();
 		if (!empty($result) && !empty($result['Cats']) && count($result['Cats']) > 0)
 		{
-			$cats = explode("/", $result['Cats'][0]['Content']);
-			$cat1 = $cats[1];
-			$cat2 = '';
-			$cat3 = '';
-			if (count($cats) == 3) {
-				$cat2 = $cats[2];
-			}
-			else if (count($cats) == 4)	{
-				$cat2 = $cats[2];
-				$cat3 = $cats[3];
-			}
-			
-			if (!isset($GLOBALS['IAB_CATEGORIES']['LEVEL1']))
-			{
-				include(MAX_PATH . '/plugins/deliveryLimitations/Content/iab-category.php');
-			}
-			if (isset($GLOBALS['IAB_CATEGORIES']['LEVEL1']))
-			{
-				$key1 = array_search($cat1, $GLOBALS['IAB_CATEGORIES']['LEVEL1']);
-				if ($op == '=~') {
-					if (empty($key1)) {
-						return false;
-					}
-					return stripos(','.$limitation.',', ','.$key1.',') !== false;
-				}
-				if ($op == '!~') {
-					if (empty($key1)) {
-						return true;
-					}
-					return stripos(','.$limitation.',', ','.$key1.',') === false;
-				}
-				
-				if (!empty($cat2))
-				{
-					$key2 = array_search($cat2, $GLOBALS['IAB_CATEGORIES']['LEVEL2']);
-					
-					if (!empty($cat3))
-					{
-						$key3 = array_search($cat3, $GLOBALS['IAB_CATEGORIES']['LEVEL3']);
-					}
-				}
-				
-				$keys = $key1 . (!empty($key2) ? ",$key2" . (!empty($key3) ? ",$key3" : "") : "");
+			foreach ($result['Cats'] as $c){
+				array_push($cats, $c['Content']);
 			}
 		}
+	}
+	else if (!empty($_POST['category'])) {
+		$cats = explode("|", $_POST['category']);
+	}
 		
-		if ($op == '==') {
-			return strcasecmp($limitation, $keys) == 0;
-		} 
-
-		if ($op == '!=') {
-			return strcasecmp($limitation, $keys) != 0;
-		} 
+	if (!empty($cats) && count($cats) > 0)
+	{
+		if (!isset($GLOBALS['IAB_CATEGORIES']['LEVEL3']))
+		{
+			include(MAX_PATH . '/plugins/deliveryLimitations/Content/iab-category.php');
+		}
+		if ($op == '=~') {
+			$limits = explode(",", $limitation);
+			$ckey='';
+			foreach ($cats as $cat) {
+				$ckey = array_search(substr($cat, 1), $GLOBALS['IAB_CATEGORIES']['LEVEL3']);
+				foreach ($limits as $lmt) {
+					if ($lmt == substr($ckey, 0, strlen($lmt))) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+		else if ($op == '!~') {
+			foreach ($cats as $i => $cat) {
+				$ckey = array_search(substr($cat, 1), $GLOBALS['IAB_CATEGORIES']['LEVEL3']);
+				if (strpos(','.$limitation.',', ','.$ckey.',') !== false) {
+					return false;
+				}
+			}
+			return true;
+		}
 	}
 
-	if ($op == '==' || $op == '=~') {
-		return false;
-	} 
-
-	return true;
+	return false;
 }
 ?>
